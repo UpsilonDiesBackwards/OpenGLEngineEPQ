@@ -17,6 +17,31 @@ var (
 		-0.5, -0.5, 0, // left
 		0.5, -0.5, 0, // right
 	}
+
+	square = []float32{
+		// first triangle
+		0.5, 0.5, 0.0, // top right
+		0.5, -0.5, 0.0, // bottom right
+		-0.5, 0.5, 0.0, // top left
+
+		// second triangle
+		0.5, -0.5, 0.0, // bottom right
+		-0.5, -0.5, 0.0, // bottom left
+		-0.5, 0.5, 0.0, // top left
+
+		-0.5, 0.5, 0,
+		-0.5, -0.5, 0,
+		0.5, -0.5, 0,
+
+		-0.5, 0.5, 0,
+		0.5, 0.5, 0,
+		0.5, -0.5, 0,
+	}
+
+	square_i = []uint32{
+		0, 1, 2, // first triangle of square
+		2, 3, 0, // second triangle of square
+	}
 )
 
 func main() {
@@ -27,7 +52,7 @@ func main() {
 
 	program := initGL()
 
-	VAO := createVAO(triangle)
+	VAO := CreateVAO(square)
 
 	for !appWindow.ShouldClose() {
 		drawWindowContent(VAO, appWindow, program)
@@ -42,7 +67,7 @@ func initGLFW() *glfw.Window {
 		fmt.Println("Success!")
 	}
 
-	glfw.WindowHint(glfw.Resizable, glfw.False)
+	glfw.WindowHint(glfw.Resizable, glfw.True)
 	glfw.WindowHint(glfw.ContextVersionMajor, 4) // OR 2
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
@@ -96,14 +121,17 @@ func drawWindowContent(VAO uint32, window *glfw.Window, program uint32) {
 	gl.ClearColor(0.52, 0.80, 0.96, 1.0)
 
 	gl.BindVertexArray(VAO)
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(triangle)/3))
+	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
+
+	fmt.Println(VAO)
+
 	gl.Enable(gl.DEPTH_TEST)
 
 	glfw.PollEvents()
 	window.SwapBuffers()
 }
 
-func createVAO(vertices []float32) uint32 {
+func CreateVAO(vertices []float32) uint32 {
 	// Generate the vertex buffer object
 	var VBO uint32
 	gl.GenBuffers(1, &VBO)
@@ -117,9 +145,5 @@ func createVAO(vertices []float32) uint32 {
 	gl.EnableVertexAttribArray(0)
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, nil)
 
-	//// Generate the Element buffer object
-	//var EBO uint32
-	//gl.GenBuffers(1, &EBO)
-	//gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
 	return VAO
 }
