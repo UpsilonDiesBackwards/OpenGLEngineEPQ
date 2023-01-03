@@ -20,15 +20,15 @@ var (
 
 	square = []float32{
 		// first triangle
-		0.5, 0.5, 0.0, // top right
-		0.5, -0.5, 0.0, // bottom right
-		-0.5, 0.5, 0.0, // top left
+		0.5, 0.5, 0.0,
+		0.5, -0.5, 0.0,
+		-0.5, 0.5, 0.0,
+
+		0.5, -0.5, 0.0,
+		-0.5, -0.5, 0.0,
+		-0.5, 0.5, 0.0,
 
 		// second triangle
-		0.5, -0.5, 0.0, // bottom right
-		-0.5, -0.5, 0.0, // bottom left
-		-0.5, 0.5, 0.0, // top left
-
 		-0.5, 0.5, 0,
 		-0.5, -0.5, 0,
 		0.5, -0.5, 0,
@@ -51,11 +51,15 @@ func main() {
 	defer glfw.Terminate()
 
 	program := initGL()
-
 	VAO := CreateVAO(square)
 
 	for !appWindow.ShouldClose() {
 		drawWindowContent(VAO, appWindow, program)
+
+		err := ProgLoop(appWindow)
+		if err != nil {
+			log.Fatalln(err)
+		}
 	}
 }
 
@@ -67,15 +71,15 @@ func initGLFW() *glfw.Window {
 		fmt.Println("Success!")
 	}
 
-	glfw.WindowHint(glfw.Resizable, glfw.True)
+	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 4) // OR 2
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 
 	appWindow, err := glfw.CreateWindow(
-		800,
-		600,
+		1024,
+		768,
 		"3D Rendering Engine",
 		nil, nil)
 	if err != nil {
@@ -122,8 +126,6 @@ func drawWindowContent(VAO uint32, window *glfw.Window, program uint32) {
 
 	gl.BindVertexArray(VAO)
 	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
-
-	fmt.Println(VAO)
 
 	gl.Enable(gl.DEPTH_TEST)
 
