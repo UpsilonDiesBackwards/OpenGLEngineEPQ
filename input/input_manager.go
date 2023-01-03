@@ -1,6 +1,7 @@
 package input
 
 import (
+	"fmt"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -9,7 +10,7 @@ type KeyAction int
 
 // UserInput Types of user input
 type UserInput struct {
-	InitialAction bool // Keyboard
+	initialAction bool // Keyboard
 
 	cursor         mgl64.Vec2 // Mouse
 	cursorChange   mgl64.Vec2 //
@@ -66,8 +67,8 @@ func (cInput UserInput) CheckpointCursorChange() {
 	cInput.cursorChange[0] = cInput.bufferedChange[0]
 	cInput.cursorChange[1] = cInput.bufferedChange[1]
 
-	cInput.cursor[0] = cInput.cursor[0] + cInput.bufferedChange[0]
-	cInput.cursor[1] = cInput.cursor[1] + cInput.bufferedChange[1]
+	cInput.cursor[0] = cInput.cursor[0]
+	cInput.cursor[1] = cInput.cursor[1]
 
 	cInput.bufferedChange[0] = 0
 	cInput.bufferedChange[1] = 0
@@ -75,15 +76,17 @@ func (cInput UserInput) CheckpointCursorChange() {
 
 // MouseCallBack Create Mouse Callback - Will be used for viewport camera transform update
 func (cInput UserInput) MouseCallBack(aW *glfw.Window, xpos, ypos float64) {
-	if cInput.InitialAction {
+	fmt.Println(xpos, ypos)
+
+	if cInput.initialAction {
 		cInput.cursorLast[0] = xpos
 		cInput.cursorLast[1] = ypos
 
-		cInput.InitialAction = false
+		cInput.initialAction = false
 	}
 
 	cInput.bufferedChange[0] += xpos - cInput.cursorLast[0]
-	cInput.bufferedChange[1] += ypos - cInput.cursorLast[1]
+	cInput.bufferedChange[1] += xpos - cInput.cursorLast[1]
 
 	cInput.cursorLast[0] = xpos
 	cInput.cursorLast[1] = ypos

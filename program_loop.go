@@ -6,8 +6,6 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
-var iUserInput = input.UserInput{}
-
 func ProgLoop(appWindow *glfw.Window) error {
 	if input.ActionState[input.INPUT_TEST] {
 		fmt.Println("\nInput test!")
@@ -18,7 +16,9 @@ func ProgLoop(appWindow *glfw.Window) error {
 		appWindow.SetShouldClose(true)
 	}
 
-	fmt.Println("Cursor: ", iUserInput.CursorChange())
+	input.Input_Manager(appWindow)
+	appWindow.SetCursorPosCallback(input.UserInput{}.MouseCallBack)
+	//fmt.Println("Mouse: ", input.UserInput{})
 
 	return nil
 }
