@@ -6,7 +6,7 @@ import (
 	"github.com/go-gl/glfw/v3.2/glfw"
 )
 
-func ProgLoop(appWindow *glfw.Window) error {
+func ProgramInputLoop(appWindow *glfw.Window) error {
 	if input.ActionState[input.INPUT_TEST] {
 		fmt.Println("\nInput test!")
 	}

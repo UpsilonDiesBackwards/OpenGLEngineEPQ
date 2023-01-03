@@ -56,7 +56,7 @@ func main() {
 	for !appWindow.ShouldClose() {
 		drawWindowContent(VAO, appWindow, program)
 
-		err := ProgLoop(appWindow)
+		err := ProgramInputLoop(appWindow)
 		if err != nil {
 			log.Fatalln(err)
 		}
