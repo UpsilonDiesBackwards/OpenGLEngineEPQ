@@ -37,6 +37,7 @@ var keyToActionMap = map[glfw.Key]KeyAction{
 // Input_Manager Create an Input_Manager
 func Input_Manager(aW *glfw.Window) {
 	aW.SetKeyCallback(KeyCallBack)
+	aW.SetCursorPosCallback(UserInput{}.MouseCallBack)
 }
 
 // KeyCallBack Create Keyboard call back.

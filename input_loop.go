@@ -17,8 +17,6 @@ func ProgramInputLoop(appWindow *glfw.Window) error {
 	}
 
 	input.Input_Manager(appWindow)
-	appWindow.SetCursorPosCallback(input.UserInput{}.MouseCallBack)
-	//fmt.Println("Mouse: ", input.UserInput{})
 
 	return nil
 }

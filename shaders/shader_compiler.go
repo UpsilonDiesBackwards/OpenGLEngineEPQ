@@ -34,14 +34,15 @@ type Program struct {
 	shaders []*Shader
 }
 
-func Shader_compiler(source string, shaderType uint32) (uint32, error) {
-	shader := gl.CreateShader(shaderType)
+func CompilerCompiler(source string, shaderType uint32) (uint32, error) {
+	shader := gl.CreateShader(shaderType) // Create new shader
 
-	csources, free := gl.Strs(source)
+	csources, free := gl.Strs(source) // Open source file in a way that OpenGL likes.
 	gl.ShaderSource(shader, 1, csources, nil)
 	free()
 	gl.CompileShader(shader)
 
+	// Handle and output any errors
 	var status int32
 	gl.GetShaderiv(shader, gl.COMPILE_STATUS, &status)
 	if status == gl.FALSE {

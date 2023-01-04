@@ -53,9 +53,12 @@ func main() {
 	program := initGL()
 	VAO := CreateVAO(square)
 
+	// Primary program loop
 	for !appWindow.ShouldClose() {
+		// Update the window content
 		drawWindowContent(VAO, appWindow, program)
 
+		// For each frame, check for user input
 		err := ProgramInputLoop(appWindow)
 		if err != nil {
 			log.Fatalln(err)
@@ -71,12 +74,14 @@ func initGLFW() *glfw.Window {
 		fmt.Println("Success!")
 	}
 
+	// Establish window hints
 	glfw.WindowHint(glfw.Resizable, glfw.False)
 	glfw.WindowHint(glfw.ContextVersionMajor, 4) // OR 2
 	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
 	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 
+	// Create a new glfw window called `appWindow`
 	appWindow, err := glfw.CreateWindow(
 		1024,
 		768,
@@ -98,19 +103,21 @@ func initGL() uint32 {
 		fmt.Println("Success!")
 	}
 
-	_GLVersion := gl.GoStr(gl.GetString(gl.VERSION))
+	_GLVersion := gl.GoStr(gl.GetString(gl.VERSION)) // Get current OpenGL version
 	log.Println("Using OpenGL version:", _GLVersion)
 
-	vShader, err := shaders.Shader_compiler(shaders.SHADER_DEFAULT_V, gl.VERTEX_SHADER)
+	// Create vShader and fShader
+	vShader, err := shaders.CompilerCompiler(shaders.SHADER_DEFAULT_V, gl.VERTEX_SHADER)
 	if err != nil {
 		panic(err)
 	}
 
-	fShader, err := shaders.Shader_compiler(shaders.SHADER_DEFAULT_F, gl.FRAGMENT_SHADER)
+	fShader, err := shaders.CompilerCompiler(shaders.SHADER_DEFAULT_F, gl.FRAGMENT_SHADER)
 	if err != nil {
 		panic(err)
 	}
 
+	// Create a new shader program, then attach shaders, then link and use it.
 	glProgram := gl.CreateProgram()
 	gl.AttachShader(glProgram, vShader)
 	gl.AttachShader(glProgram, fShader)
@@ -121,7 +128,7 @@ func initGL() uint32 {
 }
 
 func drawWindowContent(VAO uint32, window *glfw.Window, program uint32) {
-	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT)
+	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // Clear the color and depth buffer bits
 	gl.ClearColor(0.52, 0.80, 0.96, 1.0)
 
 	gl.BindVertexArray(VAO)
