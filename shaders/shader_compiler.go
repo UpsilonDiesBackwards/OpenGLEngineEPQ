@@ -42,7 +42,7 @@ type Program struct {
 	shaders []*Shader
 }
 
-func CompilerCompiler(source string, shaderType uint32) (uint32, error) {
+func ShaderCompiler(source string, shaderType uint32) (uint32, error) {
 	shader := gl.CreateShader(shaderType) // Create new shader
 
 	csources, free := gl.Strs(source) // Open source file in a way that OpenGL likes.

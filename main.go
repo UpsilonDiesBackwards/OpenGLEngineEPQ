@@ -10,9 +10,11 @@ import (
 	"github.com/go-gl/mathgl/mgl32"
 	"log"
 	"runtime"
+	"strconv"
 	"time"
 )
 
+// Geometry
 var (
 	triangle = []float32{
 		0, 0.5, 0, // top
@@ -40,7 +42,7 @@ var (
 		0.5, -0.5, 0,
 	}
 
-	square_i = []uint32{
+	squareI = []uint32{
 		0, 1, 2, // first triangle of square
 		2, 3, 0, // second triangle of square
 	}
@@ -61,38 +63,29 @@ var DeltaTime float64
 
 var uI = &input.UserInput{} // Create pointer to UserInput struct
 
+// FPS Counter
+var startTime = time.Now()
+var frameCount int
+var FPS float64
+
 func main() {
 	runtime.LockOSThread()
-
-	appWindow := initGLFW()
 	defer glfw.Terminate()
 
-	translate := mgl32.Vec3{0, 0, -3} // Translation vector
+	appWindow := initGLFW()
 
-	angle := float32(1 / 4) // Rotation angle (in radians) and axis
-	axis := mgl32.Vec3{0, 1, 0}
-
-	scale := mgl32.Vec3{2, 2, 2} // Scale factors
-
-	// Create translation, rotation, and scale matrices
-	translateMatrix := mgl32.Translate3D(translate.X(), translate.Y(), translate.Z())
-	rotateMatrix := mgl32.HomogRotate3D(angle, axis)
-	scaleMatrix := mgl32.Scale3D(scale.X(), scale.Y(), scale.Z())
-
-	// Multiply the matrices to create the world matrix
-	world := translateMatrix.Mul4(rotateMatrix.Mul4(scaleMatrix))
-
-	var previousTime = time.Now()
-
+	world := createWorldMatrix() // Create world matrix
 	program := initGL()
-	VAO := CreateVAO(square)
+	VAO := createVAO(square)
 	if VAO == 0 {
 		log.Fatalln("Error creating VAO")
 	}
 
+	var previousTime = time.Now()
+
 	// Primary program loop
 	for !appWindow.ShouldClose() {
-		// Measure the time since the last frame
+		// Calculate delta time
 		currentTime := time.Now()
 		DeltaTime = currentTime.Sub(previousTime).Seconds()
 		previousTime = currentTime
@@ -103,15 +96,26 @@ func main() {
 			log.Fatalln(err)
 		}
 
-		// Update the window content
-		drawWindowContent(VAO, appWindow, program)
+		// Handle FPS counter
+		frameCount++
+		if time.Since(startTime) >= time.Second {
+			// Calculate the FPS
+			FPS = float64(frameCount) / time.Since(startTime).Seconds()
 
-		block := PerspectiveBlock{
-			project: &projectionTransform,
-			camera:  &ViewportTransform,
-			world:   &world,
+			// Print the FPS
+			str := strconv.FormatFloat(FPS, 'f', 1, 64)
+			fmt.Println("FPS: ", str)
+
+			// Reset the frame count and start time
+			frameCount = 0
+			startTime = time.Now()
 		}
-		UBO = CreateUBO(block)
+
+		// Update the window content
+		drawWindowContent(VAO, program)
+
+		block := createPerspectiveBlock(&projectionTransform, &ViewportTransform, &world)
+		UBO = createUBO(block)
 
 		// Update the window
 		appWindow.SwapBuffers()
@@ -161,12 +165,12 @@ func initGL() uint32 {
 	log.Println("Using OpenGL version:", _GLVersion)
 
 	// Create vShader and fShader
-	vShader, err := shaders.CompilerCompiler(shaders.SHADER_DEFAULT_V, gl.VERTEX_SHADER)
+	vShader, err := shaders.ShaderCompiler(shaders.SHADER_DEFAULT_V, gl.VERTEX_SHADER)
 	if err != nil {
 		panic(err)
 	}
 
-	fShader, err := shaders.CompilerCompiler(shaders.SHADER_DEFAULT_F, gl.FRAGMENT_SHADER)
+	fShader, err := shaders.ShaderCompiler(shaders.SHADER_DEFAULT_F, gl.FRAGMENT_SHADER)
 	if err != nil {
 		panic(err)
 	}
@@ -178,12 +182,9 @@ func initGL() uint32 {
 	gl.LinkProgram(glProgram)
 	gl.UseProgram(glProgram)
 	return glProgram
-
-	gl.UseProgram(glProgram)
-	return glProgram
 }
 
-func drawWindowContent(VAO uint32, window *glfw.Window, program uint32) {
+func drawWindowContent(VAO uint32, program uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // Clear the color and depth buffer bits
 	gl.ClearColor(0.52, 0.80, 0.96, 1.0)
 
@@ -207,7 +208,7 @@ func drawWindowContent(VAO uint32, window *glfw.Window, program uint32) {
 	gl.Enable(gl.DEPTH_TEST)
 }
 
-func CreateVAO(vertices []float32) uint32 {
+func createVAO(vertices []float32) uint32 {
 	var VAO uint32
 	gl.GenVertexArrays(1, &VAO)
 	gl.BindVertexArray(VAO)
@@ -227,7 +228,7 @@ func CreateVAO(vertices []float32) uint32 {
 	return VAO
 }
 
-func CreateUBO(block PerspectiveBlock) uint32 {
+func createUBO(block PerspectiveBlock) uint32 {
 	var ubo uint32
 	gl.GenBuffers(1, &ubo)
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
@@ -242,32 +243,23 @@ func CreateUBO(block PerspectiveBlock) uint32 {
 	return ubo
 }
 
-func CheckGLErrors() {
-	glerror := gl.GetError()
-	if glerror == gl.NO_ERROR {
-		return
-	}
+func createWorldMatrix() mgl32.Mat4 {
+	translate := mgl32.Vec3{0, 0, -3}
+	angle := float32(1 / 4)
+	axis := mgl32.Vec3{0, 1, 0}
+	scale := mgl32.Vec3{2, 2, 2}
 
-	fmt.Printf("gl.GetError() reports")
-	for glerror != gl.NO_ERROR {
-		fmt.Printf(" ")
-		switch glerror {
-		case gl.INVALID_ENUM:
-			fmt.Printf("GL_INVALID_ENUM")
-		case gl.INVALID_VALUE:
-			fmt.Printf("GL_INVALID_VALUE")
-		case gl.INVALID_OPERATION:
-			fmt.Printf("GL_INVALID_OPERATION")
-		case gl.STACK_OVERFLOW:
-			fmt.Printf("GL_STACK_OVERFLOW")
-		case gl.STACK_UNDERFLOW:
-			fmt.Printf("GL_STACK_UNDERFLOW")
-		case gl.OUT_OF_MEMORY:
-			fmt.Printf("GL_OUT_OF_MEMORY")
-		default:
-			fmt.Printf("%d", glerror)
-		}
-		glerror = gl.GetError()
+	translateMatrix := mgl32.Translate3D(translate.X(), translate.Y(), translate.Z())
+	rotateMatrix := mgl32.HomogRotate3D(angle, axis)
+	scaleMatrix := mgl32.Scale3D(scale.X(), scale.Y(), scale.Z())
+
+	return translateMatrix.Mul4(rotateMatrix.Mul4(scaleMatrix))
+}
+
+func createPerspectiveBlock(projection *mgl32.Mat4, viewport *mgl32.Mat4, world *mgl32.Mat4) PerspectiveBlock {
+	return PerspectiveBlock{
+		project: projection,
+		camera:  viewport,
+		world:   world,
 	}
-	fmt.Printf("\n")
 }
