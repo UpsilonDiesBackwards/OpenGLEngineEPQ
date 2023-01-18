@@ -1,7 +1,6 @@
 package input
 
 import (
-	"fmt"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl64"
 )
@@ -10,7 +9,7 @@ type KeyAction int
 
 // UserInput Types of user input
 type UserInput struct {
-	initialAction bool // Keyboard
+	InitialAction bool // Keyboard
 
 	cursor         mgl64.Vec2 // Mouse
 	cursorChange   mgl64.Vec2 //
@@ -22,6 +21,13 @@ type UserInput struct {
 const (
 	NO_ACTION = iota
 
+	VIEWPORT_FORWARD
+	VIEWPORT_BACKWARDS
+	VIEWPORT_LEFT
+	VIEWPORT_RIGHT
+	VIEWPORT_RAISE
+	VIEWPORT_LOWER
+
 	INPUT_TEST
 	QUIT_PROGRAM
 )
@@ -30,14 +36,21 @@ var ActionState = make(map[KeyAction]bool)
 
 // Using the map we just created, map key codes to key action
 var keyToActionMap = map[glfw.Key]KeyAction{
+	glfw.KeyW:         VIEWPORT_FORWARD,
+	glfw.KeyS:         VIEWPORT_BACKWARDS,
+	glfw.KeyA:         VIEWPORT_LEFT,
+	glfw.KeyD:         VIEWPORT_RIGHT,
+	glfw.KeySpace:     VIEWPORT_RAISE,
+	glfw.KeyLeftShift: VIEWPORT_LOWER,
+
 	glfw.KeyTab:    INPUT_TEST,
 	glfw.KeyEscape: QUIT_PROGRAM,
 }
 
 // Input_Manager Create an Input_Manager
-func Input_Manager(aW *glfw.Window) {
+func Input_Manager(aW *glfw.Window, uI *UserInput) {
 	aW.SetKeyCallback(KeyCallBack)
-	aW.SetCursorPosCallback(UserInput{}.MouseCallBack)
+	aW.SetCursorPosCallback(uI.MouseCallBack)
 }
 
 // KeyCallBack Create Keyboard call back.
@@ -64,7 +77,7 @@ func (cInput UserInput) Cursor() mgl64.Vec2 { return cInput.cursor }
 func (cInput UserInput) CursorChange() mgl64.Vec2 { return cInput.cursorChange }
 
 // CheckpointCursorChange Checkpoint cursor change
-func (cInput UserInput) CheckpointCursorChange() {
+func (cInput *UserInput) CheckpointCursorChange() { // TODO: VALUES DOES NOT CHANGE!
 	cInput.cursorChange[0] = cInput.bufferedChange[0]
 	cInput.cursorChange[1] = cInput.bufferedChange[1]
 
@@ -75,19 +88,20 @@ func (cInput UserInput) CheckpointCursorChange() {
 	cInput.bufferedChange[1] = 0
 }
 
-// MouseCallBack Create Mouse Callback - Will be used for viewport camera transform update
-func (cInput UserInput) MouseCallBack(aW *glfw.Window, xpos, ypos float64) {
-	fmt.Println(xpos, ypos)
+func InitInput(uI *UserInput) {
+	uI.InitialAction = true
+}
 
-	if cInput.initialAction {
+// MouseCallBack Create Mouse Callback - Will be used for viewport camera transform update
+func (cInput *UserInput) MouseCallBack(aW *glfw.Window, xpos, ypos float64) {
+	if cInput.InitialAction {
 		cInput.cursorLast[0] = xpos
 		cInput.cursorLast[1] = ypos
-
-		cInput.initialAction = false
+		cInput.InitialAction = false
 	}
 
 	cInput.bufferedChange[0] += xpos - cInput.cursorLast[0]
-	cInput.bufferedChange[1] += xpos - cInput.cursorLast[1]
+	cInput.bufferedChange[1] += ypos - cInput.cursorLast[1]
 
 	cInput.cursorLast[0] = xpos
 	cInput.cursorLast[1] = ypos

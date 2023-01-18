@@ -9,10 +9,18 @@ import (
 const SHADER_DEFAULT_V = `
     #version 420
 	#extension GL_ARB_explicit_uniform_location : enable
+	#extension GL_ARB_enhanced_layouts : enable
 
     layout(location = 0) in vec3 vp;
+
+	layout(binding = 1) uniform PerspectiveBlock {
+		mat4 project;
+		mat4 camera;
+		mat4 world;
+	};
+
     void main() {
-        gl_Position = vec4(vp, 1);
+        gl_Position = project * camera * world * vec4(vp, 1);
     }
 ` + "\x00"
 
@@ -53,4 +61,8 @@ func CompilerCompiler(source string, shaderType uint32) (uint32, error) {
 		return 0, fmt.Errorf("Failed to compile shader %v: %v", source, log)
 	}
 	return shader, nil
+}
+
+func (prog *Program) GetUniformLocation(name string) int32 {
+	return gl.GetUniformLocation(prog.handle, gl.Str(name+"\x00"))
 }
