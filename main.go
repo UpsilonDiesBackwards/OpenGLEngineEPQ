@@ -42,9 +42,42 @@ var (
 		0.5, -0.5, 0,
 	}
 
-	squareI = []uint32{
-		0, 1, 2, // first triangle of square
-		2, 3, 0, // second triangle of square
+	cube = []float32{
+		// front face
+		-1.0, -1.0, 1.0, // bottom left
+		1.0, -1.0, 1.0, // bottom right
+		1.0, 1.0, 1.0, // top right
+		-1.0, 1.0, 1.0, // top left
+
+		// back face
+		-1.0, -1.0, -1.0, // bottom left
+		-1.0, 1.0, -1.0, // top left
+		1.0, 1.0, -1.0, // top right
+		1.0, -1.0, -1.0, // bottom right
+
+		// left face
+		-1.0, -1.0, -1.0, // bottom left
+		-1.0, 1.0, -1.0, // top left
+		-1.0, 1.0, 1.0, // top right
+		-1.0, -1.0, 1.0, // bottom right
+
+		// right face
+		1.0, -1.0, 1.0, // bottom left
+		1.0, 1.0, 1.0, // top left
+		1.0, 1.0, -1.0, // top right
+		1.0, -1.0, -1.0, // bottom right
+
+		// top face
+		-1.0, 1.0, 1.0, // bottom left
+		1.0, 1.0, 1.0, // bottom right
+		1.0, 1.0, -1.0, // top right
+		-1.0, 1.0, -1.0, // top left
+
+		// bottom face
+		-1.0, -1.0, -1.0, // bottom left
+		1.0, -1.0, -1.0, // bottom right
+		1.0, -1.0, 1.0, // top right
+		-1.0, -1.0, 1.0, // top left
 	}
 )
 
@@ -76,7 +109,7 @@ func main() {
 
 	world := createWorldMatrix() // Create world matrix
 	program := initGL()
-	VAO := createVAO(square)
+	VAO := createVAO(cube)
 	if VAO == 0 {
 		log.Fatalln("Error creating VAO")
 	}
