@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"github.com/UpsilonDiesBackwards/behngine_epq/camera"
 	"github.com/UpsilonDiesBackwards/behngine_epq/input"
+	"github.com/UpsilonDiesBackwards/behngine_epq/primitives"
 	"github.com/UpsilonDiesBackwards/behngine_epq/shaders"
 	"github.com/go-gl/gl/all-core/gl"
 	"github.com/go-gl/glfw/v3.2/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 	"log"
 	"runtime"
-	"strconv"
 	"time"
 )
 
@@ -41,44 +41,6 @@ var (
 		0.5, 0.5, 0,
 		0.5, -0.5, 0,
 	}
-
-	cube = []float32{
-		// front face
-		-1.0, -1.0, 1.0, // bottom left
-		1.0, -1.0, 1.0, // bottom right
-		1.0, 1.0, 1.0, // top right
-		-1.0, 1.0, 1.0, // top left
-
-		// back face
-		-1.0, -1.0, -1.0, // bottom left
-		-1.0, 1.0, -1.0, // top left
-		1.0, 1.0, -1.0, // top right
-		1.0, -1.0, -1.0, // bottom right
-
-		// left face
-		-1.0, -1.0, -1.0, // bottom left
-		-1.0, 1.0, -1.0, // top left
-		-1.0, 1.0, 1.0, // top right
-		-1.0, -1.0, 1.0, // bottom right
-
-		// right face
-		1.0, -1.0, 1.0, // bottom left
-		1.0, 1.0, 1.0, // top left
-		1.0, 1.0, -1.0, // top right
-		1.0, -1.0, -1.0, // bottom right
-
-		// top face
-		-1.0, 1.0, 1.0, // bottom left
-		1.0, 1.0, 1.0, // bottom right
-		1.0, 1.0, -1.0, // top right
-		-1.0, 1.0, -1.0, // top left
-
-		// bottom face
-		-1.0, -1.0, -1.0, // bottom left
-		1.0, -1.0, -1.0, // bottom right
-		1.0, -1.0, 1.0, // top right
-		-1.0, -1.0, 1.0, // top left
-	}
 )
 
 type PerspectiveBlock struct {
@@ -101,6 +63,14 @@ var startTime = time.Now()
 var frameCount int
 var FPS float64
 
+// Object
+type ObjectPrimitive struct {
+	objectV []float32
+	objectI []uint32
+}
+
+var object = &ObjectPrimitive{}
+
 func main() {
 	runtime.LockOSThread()
 	defer glfw.Terminate()
@@ -109,11 +79,15 @@ func main() {
 
 	world := createWorldMatrix() // Create world matrix
 	program := initGL()
-	VAO := createVAO(cube)
+
+	object.objectV, object.objectI = primitives.CreateNewOBJ("primitives/cube.obj")
+
+	fmt.Println(object.objectI)
+
+	VAO := createVAO(object.objectV, object.objectI)
 	if VAO == 0 {
 		log.Fatalln("Error creating VAO")
 	}
-
 	var previousTime = time.Now()
 
 	// Primary program loop
@@ -136,8 +110,8 @@ func main() {
 			FPS = float64(frameCount) / time.Since(startTime).Seconds()
 
 			// Print the FPS
-			str := strconv.FormatFloat(FPS, 'f', 1, 64)
-			fmt.Println("FPS: ", str)
+			//str := strconv.FormatFloat(FPS, 'f', 1, 64)
+			//fmt.Println("FPS: ", str)
 
 			// Reset the frame count and start time
 			frameCount = 0
@@ -236,12 +210,15 @@ func drawWindowContent(VAO uint32, program uint32) {
 		log.Printf("error binding UBO: %v\n", err)
 	}
 
-	gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
+	fmt.Println(gl.GetError())
+
+	//gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
+	gl.DrawElements(gl.TRIANGLES, int32(len(object.objectI)), gl.UNSIGNED_INT, nil)
 
 	gl.Enable(gl.DEPTH_TEST)
 }
 
-func createVAO(vertices []float32) uint32 {
+func createVAO(vertices []float32, indices []uint32) uint32 {
 	var VAO uint32
 	gl.GenVertexArrays(1, &VAO)
 	gl.BindVertexArray(VAO)
@@ -250,6 +227,11 @@ func createVAO(vertices []float32) uint32 {
 	gl.GenBuffers(1, &VBO)
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
 	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.STATIC_DRAW)
+
+	var EBO uint32
+	gl.GenBuffers(1, &EBO)
+	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(indices)*4, gl.Ptr(indices), gl.STATIC_DRAW)
 
 	//gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
