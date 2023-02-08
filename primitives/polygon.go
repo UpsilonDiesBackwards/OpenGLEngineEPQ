@@ -73,6 +73,5 @@ func triangulate(vertices []float32) []float32 {
 	for i := 0; i < len(vertices); i += 3 {
 		triangulatedVertices = append(triangulatedVertices, vertices[i], vertices[i+1], vertices[i+2])
 	}
-	fmt.Println("Triangulated Vertices: ", triangulatedVertices)
 	return triangulatedVertices
 }

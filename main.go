@@ -178,7 +178,7 @@ func initGL() uint32 {
 		panic(err)
 	}
 
-	//// Enable line smoothing and blending
+	////// Enable line smoothing and blending
 	//gl.Enable(gl.BLEND)
 	//gl.Enable(gl.LINE_SMOOTH)
 	//gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)

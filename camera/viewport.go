@@ -25,12 +25,13 @@ type Camera struct {
 
 // Create a new Camera
 var Camera_Viewport = Camera{
-	Position:    mgl64.Vec3{0, 0, 0},
-	Up:          mgl64.Vec3{0, 1, 0},
-	WorldUp:     mgl64.Vec3{0, 1, 0},
-	Yaw:         -90,
-	Pitch:       0,
-	Speed:       12,
+	Position: mgl64.Vec3{0, 0, 0},
+	Up:       mgl64.Vec3{0, 1, 0},
+	WorldUp:  mgl64.Vec3{0, 1, 0},
+	Yaw:      -90,
+	Pitch:    0,
+	Speed:    12,
+
 	Sensitivity: 0.075,
 }
 
