@@ -8,11 +8,25 @@ import (
 )
 
 var vertices float32
+var normals []float32
+var textureCoords []float32
 var indices uint32
 
-func CreateNewOBJ(filePath string) (vertices []float32, indices []uint32) {
-	// TODO: Make this it's own function
+// Object
+type ObjectPrimitive struct {
+	ObjectV  []float32
+	ObjectI  []uint32
+	ObjectN  []float32
+	ObjectTN []float32
+}
 
+var object = &ObjectPrimitive{}
+
+func CreateNewOBJ(filepath string, object *ObjectPrimitive) {
+	object.ObjectV, object.ObjectN, object.ObjectTN, object.ObjectI = loadOBJFromFile(filepath)
+}
+
+func loadOBJFromFile(filePath string) (vertices, normals, textureCoords []float32, indices []uint32) {
 	// Read file
 	fileBytes, err := os.ReadFile(filePath)
 	if err != nil {
@@ -32,25 +46,33 @@ func CreateNewOBJ(filePath string) (vertices []float32, indices []uint32) {
 			x, _ := strconv.ParseFloat(fields[1], 32)
 			y, _ := strconv.ParseFloat(fields[2], 32)
 			z, _ := strconv.ParseFloat(fields[3], 32)
-			vertices = append(vertices, float32(x), float32(y), float32(z))
+			vertices = append((triangulate(vertices)), float32(x), float32(-y), float32(z))
 		case "vt":
-			fmt.Println("Texture coordinate found:", line)
+			x, _ := strconv.ParseFloat(fields[1], 32)
+			y, _ := strconv.ParseFloat(fields[2], 32)
+			textureCoords = append(textureCoords, float32(x), float32(y))
 		case "vn":
-			fmt.Println("Vertex normal found:", line)
+			x, _ := strconv.ParseFloat(fields[1], 32)
+			y, _ := strconv.ParseFloat(fields[2], 32)
+			z, _ := strconv.ParseFloat(fields[3], 32)
+			normals = append(normals, float32(x), float32(y), float32(z))
 		case "f":
 			for _, field := range fields[1:] {
 				vertexIndices := strings.Split(field, "/")
 				vertexIndex, _ := strconv.Atoi(vertexIndices[0])
-				indices = append(indices, uint32(vertexIndex))
-
-				//// Use vertexIndex here
-				//textureIndex, _ := strconv.Atoi(vertexIndices[1])
-				//// Use textureIndex here
-				//normalIndex, _ := strconv.Atoi(vertexIndices[2])
-				//// Use normalIndex here
+				indices = append(indices, uint32(vertexIndex-1))
 			}
 		}
 	}
 
-	return vertices, indices
+	return vertices, normals, textureCoords, indices
+}
+
+func triangulate(vertices []float32) []float32 {
+	triangulatedVertices := make([]float32, 0)
+	for i := 0; i < len(vertices); i += 3 {
+		triangulatedVertices = append(triangulatedVertices, vertices[i], vertices[i+1], vertices[i+2])
+	}
+	fmt.Println("Triangulated Vertices: ", triangulatedVertices)
+	return triangulatedVertices
 }

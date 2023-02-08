@@ -63,13 +63,7 @@ var startTime = time.Now()
 var frameCount int
 var FPS float64
 
-// Object
-type ObjectPrimitive struct {
-	objectV []float32
-	objectI []uint32
-}
-
-var object = &ObjectPrimitive{}
+var object = &primitives.ObjectPrimitive{}
 
 func main() {
 	runtime.LockOSThread()
@@ -80,11 +74,13 @@ func main() {
 	world := createWorldMatrix() // Create world matrix
 	program := initGL()
 
-	object.objectV, object.objectI = primitives.CreateNewOBJ("primitives/cube.obj")
+	//object.objectV, object.objectN, object.objectTN, object.objectI = primitives.CreateNewOBJ("primitives/tower.obj")
 
-	fmt.Println(object.objectI)
+	primitives.CreateNewOBJ("primitives/tree.obj", object)
 
-	VAO := createVAO(object.objectV, object.objectI)
+	fmt.Println(object)
+
+	VAO := createVAO(object.ObjectV, object.ObjectI)
 	if VAO == 0 {
 		log.Fatalln("Error creating VAO")
 	}
@@ -182,6 +178,15 @@ func initGL() uint32 {
 		panic(err)
 	}
 
+	//// Enable line smoothing and blending
+	//gl.Enable(gl.BLEND)
+	//gl.Enable(gl.LINE_SMOOTH)
+	//gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
+	//gl.Hint(gl.LINE_SMOOTH_HINT, gl.NICEST)
+	//
+	//// Set polygon mode to GL_LINE
+	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
+
 	// Create a new shader program, then attach shaders, then link and use it.
 	glProgram := gl.CreateProgram()
 	gl.AttachShader(glProgram, vShader)
@@ -194,6 +199,7 @@ func initGL() uint32 {
 func drawWindowContent(VAO uint32, program uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // Clear the color and depth buffer bits
 	gl.ClearColor(0.52, 0.80, 0.96, 1.0)
+	//gl.ClearColor(0.0, 0.0, 0.0, 1.0)
 
 	gl.BindVertexArray(VAO)
 	if err := gl.GetError(); err != 0 {
@@ -210,10 +216,8 @@ func drawWindowContent(VAO uint32, program uint32) {
 		log.Printf("error binding UBO: %v\n", err)
 	}
 
-	fmt.Println(gl.GetError())
-
 	//gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
-	gl.DrawElements(gl.TRIANGLES, int32(len(object.objectI)), gl.UNSIGNED_INT, nil)
+	gl.DrawElements(gl.TRIANGLES, int32(len(object.ObjectI)), gl.UNSIGNED_INT, nil)
 
 	gl.Enable(gl.DEPTH_TEST)
 }
