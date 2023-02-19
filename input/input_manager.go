@@ -9,7 +9,8 @@ type KeyAction int
 
 // UserInput Types of user input
 type UserInput struct {
-	InitialAction bool // Keyboard
+	InitialAction  bool // Keyboard
+	actionToKeyMap map[glfw.Key]KeyAction
 
 	cursor         mgl64.Vec2 // Mouse
 	cursorChange   mgl64.Vec2 //
@@ -48,13 +49,28 @@ var keyToActionMap = map[glfw.Key]KeyAction{
 }
 
 // Input_Manager Create an Input_Manager
-func Input_Manager(aW *glfw.Window, uI *UserInput) {
-	aW.SetKeyCallback(KeyCallBack)
-	aW.SetCursorPosCallback(uI.MouseCallBack)
+func CreateInput_Manager() *UserInput {
+	// Using the map we just created, map key codes to key action
+	var keyToActionMap = map[glfw.Key]KeyAction{
+		glfw.KeyW:         VIEWPORT_FORWARD,
+		glfw.KeyS:         VIEWPORT_BACKWARDS,
+		glfw.KeyA:         VIEWPORT_LEFT,
+		glfw.KeyD:         VIEWPORT_RIGHT,
+		glfw.KeySpace:     VIEWPORT_RAISE,
+		glfw.KeyLeftShift: VIEWPORT_LOWER,
+
+		glfw.KeyTab:    INPUT_TEST,
+		glfw.KeyEscape: QUIT_PROGRAM,
+	}
+
+	return &UserInput{
+		InitialAction:  false,
+		actionToKeyMap: keyToActionMap,
+	}
 }
 
 // KeyCallBack Create Keyboard call back.
-func KeyCallBack(aW *glfw.Window, key glfw.Key, scancode int, action glfw.Action, modifier glfw.ModifierKey) {
+func (cInput *UserInput) KeyCallback(aW *glfw.Window, key glfw.Key, scancode int, action glfw.Action, modifier glfw.ModifierKey) {
 	// Get corresponding action for key code
 	a, ok := keyToActionMap[key]
 	if !ok {
@@ -86,10 +102,6 @@ func (cInput *UserInput) CheckpointCursorChange() { // TODO: VALUES DOES NOT CHA
 
 	cInput.bufferedChange[0] = 0
 	cInput.bufferedChange[1] = 0
-}
-
-func InitInput(uI *UserInput) {
-	uI.InitialAction = true
 }
 
 // MouseCallBack Create Mouse Callback - Will be used for viewport camera transform update
