@@ -4,14 +4,14 @@ import (
 	"fmt"
 	"github.com/UpsilonDiesBackwards/behngine_epq/camera"
 	"github.com/UpsilonDiesBackwards/behngine_epq/input"
-	"github.com/UpsilonDiesBackwards/behngine_epq/windowing"
+	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
 
 var ViewportTransform mgl32.Mat4
 
 // ProgramInputLoop During each frame of the program, check for keyboard and mouse input.
-func ProgramInputLoop(appWindow *windowing.GLWindow, deltaTime float64, c *camera.Camera, userInput *input.UserInput) error {
+func ProgramInputLoop(appWindow *glfw.Window, deltaTime float64, c *camera.Camera, userInput *input.UserInput) error {
 	adjustedViewportSpeed := deltaTime * c.Speed
 
 	// Viewport controls
