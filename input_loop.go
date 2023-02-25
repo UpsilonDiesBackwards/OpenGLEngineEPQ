@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/UpsilonDiesBackwards/behngine_epq/camera"
 	"github.com/UpsilonDiesBackwards/behngine_epq/input"
+	"github.com/UpsilonDiesBackwards/behngine_epq/windowing"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
 )
@@ -41,12 +42,12 @@ func ProgramInputLoop(appWindow *glfw.Window, deltaTime float64, c *camera.Camer
 	}
 
 	// Debug and Window controls
-	if input.ActionState[input.INPUT_TEST] {
-		fmt.Println("\nInput test!")
+	if input.ActionState[input.CHANGE_CURSOR_LOCK_STATE] {
+		windowing.ChangeCursorLockState(appWindow)
 	}
 	if input.ActionState[input.QUIT_PROGRAM] {
 		fmt.Println("\nQuitting 3D rendering engine")
-		appWindow.ShouldClose()
+		windowing.ShouldClose = true
 	}
 
 	// Cursor transform

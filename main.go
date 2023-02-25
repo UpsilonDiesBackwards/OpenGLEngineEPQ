@@ -6,6 +6,7 @@ import (
 	"github.com/UpsilonDiesBackwards/behngine_epq/input"
 	"github.com/UpsilonDiesBackwards/behngine_epq/primitives"
 	"github.com/UpsilonDiesBackwards/behngine_epq/shaders"
+	"github.com/UpsilonDiesBackwards/behngine_epq/windowing"
 	"github.com/go-gl/gl/all-core/gl"
 	"github.com/go-gl/glfw/v3.3/glfw"
 	"github.com/go-gl/mathgl/mgl32"
@@ -63,30 +64,32 @@ var startTime = time.Now()
 var frameCount int
 var FPS float64
 
-var object = &primitives.ObjectPrimitive{}
+var treeobject = &primitives.ObjectPrimitive{}
+var cubeobject = &primitives.ObjectPrimitive{}
 
 func main() {
 	runtime.LockOSThread()
 	defer glfw.Terminate()
 
-	appWindow, program := CreateWindow()
+	appWindow, program := CreateWindow(1024, 768, "3D Rendering Engine")
 
 	world := createWorldMatrix() // Create world matrix
 
 	//object.objectV, object.objectN, object.objectTN, object.objectI = primitives.CreateNewOBJ("primitives/tower.obj")
 
-	primitives.CreateNewOBJ("primitives/tree.obj", object)
+	primitives.CreateObject("tree.obj", treeobject)
+	primitives.CreateObject("cube.obj", cubeobject)
 
-	//fmt.Println(object)
+	object1 := createVAO(treeobject.ObjectV, treeobject.ObjectI)
+	object2 := createVAO(cubeobject.ObjectV, cubeobject.ObjectI)
 
-	VAO := createVAO(object.ObjectV, object.ObjectI)
-	if VAO == 0 {
-		log.Fatalln("Error creating VAO")
-	}
+	primitives.VAO = append(primitives.VAO, object1)
+	primitives.VAO = append(primitives.VAO, object2)
+
 	var previousTime = time.Now()
 
 	// Primary program loop
-	for !appWindow.ShouldClose() {
+	for !windowing.ShouldClose {
 		// Calculate delta time
 		currentTime := time.Now()
 		DeltaTime = currentTime.Sub(previousTime).Seconds()
@@ -95,26 +98,13 @@ func main() {
 		// For each frame, check for user input
 		err := ProgramInputLoop(appWindow, DeltaTime, &camera.Camera_Viewport, uI)
 		if err != nil {
-			log.Println("Failed executing program input loop!", err)
-		}
-
-		// Handle FPS counter
-		frameCount++
-		if time.Since(startTime) >= time.Second {
-			// Calculate the FPS
-			FPS = float64(frameCount) / time.Since(startTime).Seconds()
-
-			// Print the FPS
-			//str := strconv.FormatFloat(FPS, 'f', 1, 64)
-			//fmt.Println("FPS: ", str)
-
-			// Reset the frame count and start time
-			frameCount = 0
-			startTime = time.Now()
+			log.Fatalln(err)
 		}
 
 		// Update the window content
-		drawWindowContent(VAO, program)
+		drawWindowContent(primitives.VAO[0], treeobject, program)
+
+		//windowing.EnableWireFrameRendering()
 
 		block := createPerspectiveBlock(&projectionTransform, &ViewportTransform, &world)
 		UBO = createUBO(block)
@@ -125,7 +115,7 @@ func main() {
 	}
 }
 
-func CreateWindow() (*glfw.Window, uint32) {
+func CreateWindow(width, height int, title string) (*glfw.Window, uint32) {
 	fmt.Printf("Initializing GLFW... ")
 	if err := glfw.Init(); err != nil {
 		panic(err)
@@ -135,21 +125,21 @@ func CreateWindow() (*glfw.Window, uint32) {
 
 	// Establish window hints
 	glfw.WindowHint(glfw.Resizable, glfw.False)
-	glfw.WindowHint(glfw.ContextVersionMajor, 4)
-	glfw.WindowHint(glfw.ContextVersionMinor, 6)
+	glfw.WindowHint(glfw.ContextVersionMajor, 4) // OR 2
+	glfw.WindowHint(glfw.ContextVersionMinor, 1)
 	glfw.WindowHint(glfw.OpenGLProfile, glfw.OpenGLCoreProfile)
+	glfw.WindowHint(glfw.OpenGLForwardCompatible, glfw.True)
 
 	// Create a new glfw window called `appWindow`
 	appWindow, err := glfw.CreateWindow(
-		1024,
-		768,
-		"3D Rendering Engine",
+		width,
+		height,
+		title,
 		nil, nil)
 	if err != nil {
-		fmt.Println("Can not create GLFW window: %s", err)
+		panic(err)
 	}
 	appWindow.MakeContextCurrent()
-	appWindow.SetInputMode(glfw.CursorMode, glfw.CursorDisabled)
 
 	appWindow.SetKeyCallback(uI.KeyCallback)
 	appWindow.SetCursorPosCallback(uI.MouseCallBack)
@@ -175,15 +165,6 @@ func CreateWindow() (*glfw.Window, uint32) {
 		panic(err)
 	}
 
-	////// Enable line smoothing and blending
-	//gl.Enable(gl.BLEND)
-	//gl.Enable(gl.LINE_SMOOTH)
-	//gl.BlendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA)
-	//gl.Hint(gl.LINE_SMOOTH_HINT, gl.NICEST)
-	//
-	//// Set polygon mode to GL_LINE
-	//gl.PolygonMode(gl.FRONT_AND_BACK, gl.LINE)
-
 	// Create a new shader program, then attach shaders, then link and use it.
 	glProgram := gl.CreateProgram()
 	gl.AttachShader(glProgram, vShader)
@@ -194,7 +175,7 @@ func CreateWindow() (*glfw.Window, uint32) {
 	return appWindow, glProgram
 }
 
-func drawWindowContent(VAO uint32, program uint32) {
+func drawWindowContent(VAO uint32, object *primitives.ObjectPrimitive, program uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // Clear the color and depth buffer bits
 	gl.ClearColor(0.52, 0.80, 0.96, 1.0)
 	//gl.ClearColor(0.0, 0.0, 0.0, 1.0)
@@ -214,7 +195,7 @@ func drawWindowContent(VAO uint32, program uint32) {
 		log.Printf("error binding UBO: %v\n", err)
 	}
 
-	//gl.DrawArrays(gl.TRIANGLES, 0, int32(len(square)/3))
+	//gl.DrawArrays(gl.TRIANGLES, 0, int32(len(cubeobject.ObjectI)/3))
 	gl.DrawElements(gl.TRIANGLES, int32(len(object.ObjectI)), gl.UNSIGNED_INT, nil)
 
 	gl.Enable(gl.DEPTH_TEST)

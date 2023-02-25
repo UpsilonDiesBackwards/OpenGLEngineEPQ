@@ -29,7 +29,7 @@ const (
 	VIEWPORT_RAISE
 	VIEWPORT_LOWER
 
-	INPUT_TEST
+	CHANGE_CURSOR_LOCK_STATE
 	QUIT_PROGRAM
 )
 
@@ -44,7 +44,7 @@ var keyToActionMap = map[glfw.Key]KeyAction{
 	glfw.KeySpace:     VIEWPORT_RAISE,
 	glfw.KeyLeftShift: VIEWPORT_LOWER,
 
-	glfw.KeyTab:    INPUT_TEST,
+	glfw.KeyTab:    CHANGE_CURSOR_LOCK_STATE,
 	glfw.KeyEscape: QUIT_PROGRAM,
 }
 
@@ -59,7 +59,7 @@ func CreateInput_Manager() *UserInput {
 		glfw.KeySpace:     VIEWPORT_RAISE,
 		glfw.KeyLeftShift: VIEWPORT_LOWER,
 
-		glfw.KeyTab:    INPUT_TEST,
+		glfw.KeyTab:    CHANGE_CURSOR_LOCK_STATE,
 		glfw.KeyEscape: QUIT_PROGRAM,
 	}
 
