@@ -1,3 +1,5 @@
 .idea/
 ._*
 *.log
+resources/obj/Ballerina.obj
+behngine_epq

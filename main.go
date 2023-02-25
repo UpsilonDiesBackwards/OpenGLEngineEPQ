@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"github.com/UpsilonDiesBackwards/behngine_epq/camera"
 	"github.com/UpsilonDiesBackwards/behngine_epq/input"
-	"github.com/UpsilonDiesBackwards/behngine_epq/primitives"
+	"github.com/UpsilonDiesBackwards/behngine_epq/objLoader"
 	"github.com/UpsilonDiesBackwards/behngine_epq/shaders"
 	"github.com/UpsilonDiesBackwards/behngine_epq/windowing"
 	"github.com/go-gl/gl/all-core/gl"
@@ -15,57 +15,21 @@ import (
 	"time"
 )
 
-// Geometry
-var (
-	triangle = []float32{
-		0, 0.5, 0, // top
-		-0.5, -0.5, 0, // left
-		0.5, -0.5, 0, // right
-	}
-
-	square = []float32{
-		// first triangle
-		0.5, 0.5, 0.0,
-		0.5, -0.5, 0.0,
-		-0.5, 0.5, 0.0,
-
-		0.5, -0.5, 0.0,
-		-0.5, -0.5, 0.0,
-		-0.5, 0.5, 0.0,
-
-		// second triangle
-		-0.5, 0.5, 0,
-		-0.5, -0.5, 0,
-		0.5, -0.5, 0,
-
-		-0.5, 0.5, 0,
-		0.5, 0.5, 0,
-		0.5, -0.5, 0,
-	}
-)
-
 type PerspectiveBlock struct {
-	project *mgl32.Mat4
-	camera  *mgl32.Mat4
-	world   *mgl32.Mat4
+	project mgl32.Mat4
+	camera  mgl32.Mat4
+	model   mgl32.Mat4
 }
+
+var UBO uint32
 
 var fov = float32(60.0)
 var projectionTransform = mgl32.Perspective(mgl32.DegToRad(fov),
 	float32(800/600), 0.1, 2000)
 
-var UBO uint32
 var DeltaTime float64
 
-var uI = &input.UserInput{} // Create pointer to UserInput struct
-
-// FPS Counter
-var startTime = time.Now()
-var frameCount int
-var FPS float64
-
-var treeobject = &primitives.ObjectPrimitive{}
-var cubeobject = &primitives.ObjectPrimitive{}
+var userInput = &input.UserInput{} // Create pointer to UserInput struct
 
 func main() {
 	runtime.LockOSThread()
@@ -73,18 +37,9 @@ func main() {
 
 	appWindow, program := CreateWindow(1024, 768, "3D Rendering Engine")
 
-	world := createWorldMatrix() // Create world matrix
-
-	//object.objectV, object.objectN, object.objectTN, object.objectI = primitives.CreateNewOBJ("primitives/tower.obj")
-
-	primitives.CreateObject("tree.obj", treeobject)
-	primitives.CreateObject("cube.obj", cubeobject)
-
-	object1 := createVAO(treeobject.ObjectV, treeobject.ObjectI)
-	object2 := createVAO(cubeobject.ObjectV, cubeobject.ObjectI)
-
-	primitives.VAO = append(primitives.VAO, object1)
-	primitives.VAO = append(primitives.VAO, object2)
+	objLoader.CreateObject("cube.obj", "CUBE", mgl32.Vec3{-4, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
+	objLoader.CreateObject("cube.obj", "CUBE", mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
+	objLoader.CreateObject("cube.obj", "CUBE", mgl32.Vec3{4, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
 
 	var previousTime = time.Now()
 
@@ -96,18 +51,14 @@ func main() {
 		previousTime = currentTime
 
 		// For each frame, check for user input
-		err := ProgramInputLoop(appWindow, DeltaTime, &camera.Camera_Viewport, uI)
+		err := ProgramInputLoop(appWindow, DeltaTime, &camera.Camera_Viewport, userInput)
 		if err != nil {
 			log.Fatalln(err)
 		}
 
-		// Update the window content
-		drawWindowContent(primitives.VAO[0], treeobject, program)
+		drawWindowContent(program)
 
-		//windowing.EnableWireFrameRendering()
-
-		block := createPerspectiveBlock(&projectionTransform, &ViewportTransform, &world)
-		UBO = createUBO(block)
+		windowing.EnableFPSCounter(DeltaTime)
 
 		// Update the window
 		appWindow.SwapBuffers()
@@ -141,8 +92,8 @@ func CreateWindow(width, height int, title string) (*glfw.Window, uint32) {
 	}
 	appWindow.MakeContextCurrent()
 
-	appWindow.SetKeyCallback(uI.KeyCallback)
-	appWindow.SetCursorPosCallback(uI.MouseCallBack)
+	appWindow.SetKeyCallback(userInput.KeyCallback)
+	appWindow.SetCursorPosCallback(userInput.MouseCallBack)
 
 	fmt.Printf("Initializing OpenGL... ")
 	if err := gl.Init(); err != nil {
@@ -175,58 +126,39 @@ func CreateWindow(width, height int, title string) (*glfw.Window, uint32) {
 	return appWindow, glProgram
 }
 
-func drawWindowContent(VAO uint32, object *primitives.ObjectPrimitive, program uint32) {
+func drawWindowContent(program uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // Clear the color and depth buffer bits
 	gl.ClearColor(0.52, 0.80, 0.96, 1.0)
-	//gl.ClearColor(0.0, 0.0, 0.0, 1.0)
-
-	gl.BindVertexArray(VAO)
-	if err := gl.GetError(); err != 0 {
-		log.Printf("error binding vertex array object: %v\n", err)
-	}
 
 	gl.UseProgram(program)
 	if err := gl.GetError(); err != 0 {
 		log.Printf("error using program: %v\n", err)
 	}
 
-	gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, UBO)
-	if err := gl.GetError(); err != 0 {
-		log.Printf("error binding UBO: %v\n", err)
-	}
+	// Loop through all objects and render them
+	for _, obj := range objLoader.Objects {
+		gl.BindVertexArray(obj.VAO)
+		if err := gl.GetError(); err != 0 {
+			log.Printf("error binding vertex array object for object: %v,  reason: &v\n", obj, err)
+		}
 
-	//gl.DrawArrays(gl.TRIANGLES, 0, int32(len(cubeobject.ObjectI)/3))
-	gl.DrawElements(gl.TRIANGLES, int32(len(object.ObjectI)), gl.UNSIGNED_INT, nil)
+		obj.CreateModelMatrix()
+
+		block := createPerspectiveBlock(projectionTransform, ViewportTransform, obj.ModelMatrix)
+		UBO := createUBO(&block.project, &block.camera, &block.model)
+
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, UBO)
+		if err := gl.GetError(); err != 0 {
+			log.Printf("error binding UBO: %v\n", err)
+		}
+
+		gl.DrawElements(gl.TRIANGLES, int32(len(obj.Indices)), gl.UNSIGNED_INT, gl.PtrOffset(0))
+	}
 
 	gl.Enable(gl.DEPTH_TEST)
 }
 
-func createVAO(vertices []float32, indices []uint32) uint32 {
-	var VAO uint32
-	gl.GenVertexArrays(1, &VAO)
-	gl.BindVertexArray(VAO)
-
-	var VBO uint32
-	gl.GenBuffers(1, &VBO)
-	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.STATIC_DRAW)
-
-	var EBO uint32
-	gl.GenBuffers(1, &EBO)
-	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(indices)*4, gl.Ptr(indices), gl.STATIC_DRAW)
-
-	//gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 3*4, gl.PtrOffset(0))
-	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
-	gl.EnableVertexAttribArray(0)
-
-	gl.BindBuffer(gl.ARRAY_BUFFER, 0)
-	gl.BindVertexArray(0)
-
-	return VAO
-}
-
-func createUBO(block PerspectiveBlock) uint32 {
+func createUBO(project, camera, model *mgl32.Mat4) uint32 {
 	var ubo uint32
 	gl.GenBuffers(1, &ubo)
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
@@ -234,30 +166,17 @@ func createUBO(block PerspectiveBlock) uint32 {
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, ubo)
 
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
-	gl.BufferSubData(gl.UNIFORM_BUFFER, 0, 16*4, gl.Ptr(&block.project[0]))
-	gl.BufferSubData(gl.UNIFORM_BUFFER, 16*4, 16*4, gl.Ptr(&block.camera[0]))
-	gl.BufferSubData(gl.UNIFORM_BUFFER, 32*4, 16*4, gl.Ptr(&block.world[0]))
+	gl.BufferSubData(gl.UNIFORM_BUFFER, 0, 16*4, gl.Ptr(&project[0]))
+	gl.BufferSubData(gl.UNIFORM_BUFFER, 16*4, 16*4, gl.Ptr(&camera[0]))
+	gl.BufferSubData(gl.UNIFORM_BUFFER, 32*4, 16*4, gl.Ptr(&model[0]))
 
 	return ubo
 }
 
-func createWorldMatrix() mgl32.Mat4 {
-	translate := mgl32.Vec3{0, 0, -3}
-	angle := float32(1 / 4)
-	axis := mgl32.Vec3{0, 1, 0}
-	scale := mgl32.Vec3{2, 2, 2}
-
-	translateMatrix := mgl32.Translate3D(translate.X(), translate.Y(), translate.Z())
-	rotateMatrix := mgl32.HomogRotate3D(angle, axis)
-	scaleMatrix := mgl32.Scale3D(scale.X(), scale.Y(), scale.Z())
-
-	return translateMatrix.Mul4(rotateMatrix.Mul4(scaleMatrix))
-}
-
-func createPerspectiveBlock(projection *mgl32.Mat4, viewport *mgl32.Mat4, world *mgl32.Mat4) PerspectiveBlock {
+func createPerspectiveBlock(projection, viewport, world mgl32.Mat4) PerspectiveBlock {
 	return PerspectiveBlock{
 		project: projection,
 		camera:  viewport,
-		world:   world,
+		model:   world,
 	}
 }

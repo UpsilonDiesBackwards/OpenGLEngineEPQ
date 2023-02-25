@@ -52,8 +52,8 @@ func ProgramInputLoop(appWindow *glfw.Window, deltaTime float64, c *camera.Camer
 
 	// Cursor transform
 	ViewportTransform = c.GetTransform()
-	uI.CheckpointCursorChange()
-	c.UpdateDirection(uI)
+	userInput.CheckpointCursorChange()
+	c.UpdateDirection(userInput)
 
 	input.CreateInput_Manager()
 	return nil
