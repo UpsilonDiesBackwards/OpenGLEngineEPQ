@@ -4,6 +4,7 @@ import (
 	"github.com/go-gl/gl/all-core/gl"
 	"github.com/go-gl/mathgl/mgl32"
 	"math"
+	"unsafe"
 )
 
 type Light struct {
@@ -77,12 +78,12 @@ func createLightVAO(vertices []float32, indices []uint32) uint32 {
 	var VBO uint32
 	gl.GenBuffers(1, &VBO)
 	gl.BindBuffer(gl.ARRAY_BUFFER, VBO)
-	gl.BufferData(gl.ARRAY_BUFFER, len(vertices)*4, gl.Ptr(vertices), gl.STATIC_DRAW)
-
+	gl.BufferData(gl.ARRAY_BUFFER, int(unsafe.Sizeof(vertices[0]))*len(vertices), gl.Ptr(vertices), gl.STATIC_DRAW)
+	
 	var EBO uint32
 	gl.GenBuffers(1, &EBO)
 	gl.BindBuffer(gl.ELEMENT_ARRAY_BUFFER, EBO)
-	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, len(indices)*4, gl.Ptr(indices), gl.STATIC_DRAW)
+	gl.BufferData(gl.ELEMENT_ARRAY_BUFFER, int(unsafe.Sizeof(indices[0]))*len(indices), gl.Ptr(indices), gl.STATIC_DRAW)
 
 	gl.VertexAttribPointer(0, 3, gl.FLOAT, false, 0, gl.PtrOffset(0))
 	gl.EnableVertexAttribArray(0)

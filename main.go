@@ -28,9 +28,6 @@ type LightingBlock struct {
 	model     mgl32.Mat4
 }
 
-var PUBO uint32 // Perspective UBO
-var LUBO uint32 // Lighting UBO
-
 var fov = float32(60.0)
 var projectionTransform = mgl32.Perspective(mgl32.DegToRad(fov),
 	float32(800/600), 0.1, 2000)
@@ -38,8 +35,6 @@ var projectionTransform = mgl32.Perspective(mgl32.DegToRad(fov),
 var DeltaTime float64
 
 var userInput = &input.UserInput{} // Create pointer to UserInput struct
-
-var phongProgram uint32
 
 func main() {
 	runtime.LockOSThread()
@@ -116,12 +111,12 @@ func CreateWindow(width, height int, title string) (*glfw.Window, uint32, uint32
 	log.Println("Using OpenGL version:", _GLVersion)
 
 	// Create vShader and fShader
-	vShader, err := shaders.ShaderCompiler(shaders.SHADER_DEFAULT_V, gl.VERTEX_SHADER)
+	vShader, err := shaders.ShaderCompiler(shaders.SHADER_PHONG_V, gl.VERTEX_SHADER)
 	if err != nil {
 		fmt.Println("Error compiling vertex shader: ", err)
 	}
 
-	fShader, err := shaders.ShaderCompiler(shaders.SHADER_DEFAULT_F, gl.FRAGMENT_SHADER)
+	fShader, err := shaders.ShaderCompiler(shaders.SHADER_PHONG_F, gl.FRAGMENT_SHADER)
 	if err != nil {
 		fmt.Println("Error compiling fragment shader: ", err)
 	}
@@ -204,7 +199,7 @@ func drawWindowContent(objectProgram, lightProgram uint32) {
 		// Create lighting block
 		l.CreateLightModelMatrix()
 		block := createLightingBlock(lightTransform, ViewportTransform, l.ModelMatrix)
-		UBO := createLightingUBO(&block.transform, &block.camera, &block.model)
+		UBO := createLightingUBO(&block.transform, &block.camera, &block.model, lightProgram)
 
 		// Bind and draw
 		gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, UBO)
@@ -237,7 +232,7 @@ func createPerspectiveUBO(project, camera, model *mgl32.Mat4) uint32 {
 	return ubo
 }
 
-func createLightingUBO(transform, camera, model *mgl32.Mat4) uint32 {
+func createLightingUBO(transform, camera, model *mgl32.Mat4, program uint32) uint32 {
 	var ubo uint32
 	gl.GenBuffers(1, &ubo)
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
@@ -254,7 +249,7 @@ func createLightingUBO(transform, camera, model *mgl32.Mat4) uint32 {
 	lightBlockSize := int32(3 * 16 * 4) // Size of the lighting block in bytes
 	gl.BindBufferBase(gl.UNIFORM_BUFFER, lightBlockBindingIndex, ubo)
 	lightBlockOffset := int32(0)
-	gl.UniformBlockBinding(phongProgram, gl.GetUniformBlockIndex(phongProgram, gl.Str("LightingBlock\x00")), lightBlockBindingIndex)
+	//gl.UniformBlockBinding(program, gl.GetUniformBlockIndex(program, gl.Str("LightingBlock\x00")), lightBlockBindingIndex)
 	gl.BindBufferRange(gl.UNIFORM_BUFFER, lightBlockBindingIndex, ubo, int(lightBlockOffset), int(lightBlockSize))
 
 	return ubo
