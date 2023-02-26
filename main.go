@@ -3,8 +3,8 @@ package main
 import (
 	"fmt"
 	"github.com/UpsilonDiesBackwards/behngine_epq/camera"
+	"github.com/UpsilonDiesBackwards/behngine_epq/entities"
 	"github.com/UpsilonDiesBackwards/behngine_epq/input"
-	"github.com/UpsilonDiesBackwards/behngine_epq/objLoader"
 	"github.com/UpsilonDiesBackwards/behngine_epq/shaders"
 	"github.com/UpsilonDiesBackwards/behngine_epq/windowing"
 	"github.com/go-gl/gl/all-core/gl"
@@ -13,6 +13,7 @@ import (
 	"log"
 	"runtime"
 	"time"
+	"unsafe"
 )
 
 type PerspectiveBlock struct {
@@ -21,7 +22,14 @@ type PerspectiveBlock struct {
 	model   mgl32.Mat4
 }
 
-var UBO uint32
+type LightingBlock struct {
+	transform mgl32.Mat4
+	camera    mgl32.Mat4
+	model     mgl32.Mat4
+}
+
+var PUBO uint32 // Perspective UBO
+var LUBO uint32 // Lighting UBO
 
 var fov = float32(60.0)
 var projectionTransform = mgl32.Perspective(mgl32.DegToRad(fov),
@@ -31,18 +39,21 @@ var DeltaTime float64
 
 var userInput = &input.UserInput{} // Create pointer to UserInput struct
 
+var phongProgram uint32
+
 func main() {
 	runtime.LockOSThread()
 	defer glfw.Terminate()
 
-	appWindow, program := CreateWindow(1024, 768, "3D Rendering Engine")
+	appWindow, program, lightProgram := CreateWindow(1024, 768, "3D Rendering Engine")
 
-	objLoader.CreateObject("cube.obj", "CUBE", mgl32.Vec3{-4, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
-	objLoader.CreateObject("cube.obj", "CUBE", mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
-	objLoader.CreateObject("cube.obj", "CUBE", mgl32.Vec3{4, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
+	entities.CreateObject("tree.obj", "CUBE", mgl32.Vec3{-4, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
+	entities.CreateObject("cube.obj", "CUBE", mgl32.Vec3{0, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
+	entities.CreateObject("tree.obj", "CUBE", mgl32.Vec3{4, 0, 0}, mgl32.Vec3{0, 0, 0}, mgl32.Vec3{1, 1, 1})
+
+	entities.CreateLight(mgl32.Vec3{-2, 0, 1}, mgl32.Vec3{1, 0.5, 0.5})
 
 	var previousTime = time.Now()
-
 	// Primary program loop
 	for !windowing.ShouldClose {
 		// Calculate delta time
@@ -56,7 +67,7 @@ func main() {
 			log.Fatalln(err)
 		}
 
-		drawWindowContent(program)
+		drawWindowContent(program, lightProgram)
 
 		windowing.EnableFPSCounter(DeltaTime)
 
@@ -66,7 +77,7 @@ func main() {
 	}
 }
 
-func CreateWindow(width, height int, title string) (*glfw.Window, uint32) {
+func CreateWindow(width, height int, title string) (*glfw.Window, uint32, uint32) {
 	fmt.Printf("Initializing GLFW... ")
 	if err := glfw.Init(); err != nil {
 		panic(err)
@@ -101,64 +112,117 @@ func CreateWindow(width, height int, title string) (*glfw.Window, uint32) {
 	} else {
 		fmt.Println("Success!")
 	}
-
 	_GLVersion := gl.GoStr(gl.GetString(gl.VERSION)) // Get current OpenGL version
 	log.Println("Using OpenGL version:", _GLVersion)
 
 	// Create vShader and fShader
 	vShader, err := shaders.ShaderCompiler(shaders.SHADER_DEFAULT_V, gl.VERTEX_SHADER)
 	if err != nil {
-		panic(err)
+		fmt.Println("Error compiling vertex shader: ", err)
 	}
 
 	fShader, err := shaders.ShaderCompiler(shaders.SHADER_DEFAULT_F, gl.FRAGMENT_SHADER)
 	if err != nil {
-		panic(err)
+		fmt.Println("Error compiling fragment shader: ", err)
 	}
 
-	// Create a new shader program, then attach shaders, then link and use it.
-	glProgram := gl.CreateProgram()
-	gl.AttachShader(glProgram, vShader)
-	gl.AttachShader(glProgram, fShader)
-	gl.LinkProgram(glProgram)
-	gl.UseProgram(glProgram)
+	oProgram := gl.CreateProgram()
+	gl.AttachShader(oProgram, vShader)
+	gl.AttachShader(oProgram, fShader)
+	gl.LinkProgram(oProgram)
 
-	return appWindow, glProgram
+	lShader, err := shaders.ShaderCompiler(shaders.SHADER_LIGHT_F, gl.FRAGMENT_SHADER)
+	if err != nil {
+		fmt.Println("Error compiling light shader: ", err)
+	}
+
+	lProgram := gl.CreateProgram()
+	gl.AttachShader(lProgram, vShader)
+	gl.AttachShader(lProgram, lShader)
+	gl.LinkProgram(lProgram)
+
+	return appWindow, oProgram, lProgram
 }
 
-func drawWindowContent(program uint32) {
+func drawWindowContent(objectProgram, lightProgram uint32) {
 	gl.Clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT) // Clear the color and depth buffer bits
 	gl.ClearColor(0.52, 0.80, 0.96, 1.0)
 
-	gl.UseProgram(program)
+	// Use object Program
+	gl.UseProgram(objectProgram)
 	if err := gl.GetError(); err != 0 {
-		log.Printf("error using program: %v\n", err)
+		log.Printf("error using object Program: %v\n", err)
 	}
 
-	// Loop through all objects and render them
-	for _, obj := range objLoader.Objects {
+	// Loop through all objects
+	for _, obj := range entities.Objects {
 		gl.BindVertexArray(obj.VAO)
 		if err := gl.GetError(); err != 0 {
-			log.Printf("error binding vertex array object for object: %v,  reason: &v\n", obj, err)
+			log.Printf("error binding vertex array object for object: %v,  reason: %v\n", obj.VAO, err)
 		}
 
+		objectColorLoc := gl.GetUniformLocation(objectProgram, gl.Str("objectColor\x00"))
+		lightColorLoc := gl.GetUniformLocation(objectProgram, gl.Str("lightColor\x00"))
+		lightPosLoc := gl.GetUniformLocation(objectProgram, gl.Str("lightPos\x00"))
+		gl.Uniform3f(lightPosLoc, 1.2, 1.0, 2.0)     // Example light position
+		gl.Uniform3f(objectColorLoc, 1.0, 0.5, 0.31) // Example object color
+		gl.Uniform3f(lightColorLoc, 1.0, 1.0, 1.0)   // Example light color
+
+		// Set perspective block
 		obj.CreateModelMatrix()
-
 		block := createPerspectiveBlock(projectionTransform, ViewportTransform, obj.ModelMatrix)
-		UBO := createUBO(&block.project, &block.camera, &block.model)
+		UBO := createPerspectiveUBO(&block.project, &block.camera, &block.model)
 
+		// Bind and draw objects
 		gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, UBO)
 		if err := gl.GetError(); err != 0 {
-			log.Printf("error binding UBO: %v\n", err)
+			log.Printf("error binding object uniform buffer base: %v\n", err)
 		}
-
 		gl.DrawElements(gl.TRIANGLES, int32(len(obj.Indices)), gl.UNSIGNED_INT, gl.PtrOffset(0))
 	}
+	// unbind object
+	gl.BindVertexArray(0)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, 0)
+
+	lightPos := mgl32.Vec3{0.6, 1, 0.1}
+	lightTransform := mgl32.Translate3D(lightPos.X(), lightPos.Y(), lightPos.Z()).Mul4(
+		mgl32.Scale3D(0.2, 0.2, 0.2))
+
+	// Use light program
+	gl.UseProgram(lightProgram)
+	if err := gl.GetError(); err != 0 {
+		log.Printf("error using light Program: %v\n", err)
+	}
+
+	// Loop through all lights
+	for _, l := range entities.Lights {
+		gl.BindVertexArray(l.VAO)
+		if err := gl.GetError(); err != 0 {
+			log.Printf("error binding vertex array object for light: %v,  reason: %v\n", l.VAO, err)
+		}
+
+		// Create lighting block
+		l.CreateLightModelMatrix()
+		block := createLightingBlock(lightTransform, ViewportTransform, l.ModelMatrix)
+		UBO := createLightingUBO(&block.transform, &block.camera, &block.model)
+
+		// Bind and draw
+		gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, UBO)
+		if err := gl.GetError(); err != 0 {
+			log.Printf("error binding light uniform buffer base: %v for buffer %b\n", err, UBO)
+		}
+
+		gl.BufferSubData(gl.UNIFORM_BUFFER, 0, int(unsafe.Sizeof(block)), unsafe.Pointer(&block))
+		gl.DrawElements(gl.TRIANGLES, int32(len(l.Indices)), gl.UNSIGNED_INT, gl.PtrOffset(0))
+	}
+	// unbind light
+	gl.BindVertexArray(0)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, 0)
 
 	gl.Enable(gl.DEPTH_TEST)
 }
 
-func createUBO(project, camera, model *mgl32.Mat4) uint32 {
+func createPerspectiveUBO(project, camera, model *mgl32.Mat4) uint32 {
 	var ubo uint32
 	gl.GenBuffers(1, &ubo)
 	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
@@ -173,10 +237,54 @@ func createUBO(project, camera, model *mgl32.Mat4) uint32 {
 	return ubo
 }
 
+func createLightingUBO(transform, camera, model *mgl32.Mat4) uint32 {
+	var ubo uint32
+	gl.GenBuffers(1, &ubo)
+	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
+	gl.BufferData(gl.UNIFORM_BUFFER, 3*16*4, nil, gl.STREAM_DRAW)
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, 1, ubo)
+
+	gl.BindBuffer(gl.UNIFORM_BUFFER, ubo)
+	gl.BufferSubData(gl.UNIFORM_BUFFER, 0, 16*4, gl.Ptr(&transform[0]))
+	gl.BufferSubData(gl.UNIFORM_BUFFER, 16*4, 16*4, gl.Ptr(&camera[0]))
+	gl.BufferSubData(gl.UNIFORM_BUFFER, 32*4, 16*4, gl.Ptr(&model[0]))
+
+	// Bind the buffer to the lightBlock struct
+	lightBlockBindingIndex := uint32(1) // This should match the binding index used in the shader
+	lightBlockSize := int32(3 * 16 * 4) // Size of the lighting block in bytes
+	gl.BindBufferBase(gl.UNIFORM_BUFFER, lightBlockBindingIndex, ubo)
+	lightBlockOffset := int32(0)
+	gl.UniformBlockBinding(phongProgram, gl.GetUniformBlockIndex(phongProgram, gl.Str("LightingBlock\x00")), lightBlockBindingIndex)
+	gl.BindBufferRange(gl.UNIFORM_BUFFER, lightBlockBindingIndex, ubo, int(lightBlockOffset), int(lightBlockSize))
+
+	return ubo
+}
+
 func createPerspectiveBlock(projection, viewport, world mgl32.Mat4) PerspectiveBlock {
 	return PerspectiveBlock{
 		project: projection,
 		camera:  viewport,
 		model:   world,
+	}
+}
+
+func createLightingBlock(position, viewport, world mgl32.Mat4) LightingBlock {
+	return LightingBlock{
+		transform: position,
+		camera:    viewport,
+		model:     world,
+	}
+}
+
+func printAttachedShaders(program uint32) {
+	shaders := make([]uint32, 2) // Initialize with a capacity of 2
+	count := int32(len(shaders))
+	gl.GetAttachedShaders(program, count, nil, &shaders[0])
+
+	fmt.Printf("Program %d has %d shaders attached:\n", program, count)
+	for _, shader := range shaders {
+		var shaderType int32
+		gl.GetShaderiv(shader, gl.SHADER_TYPE, &shaderType)
+		fmt.Printf("\tShader %d: type %d\n", shader, shaderType)
 	}
 }

@@ -40,7 +40,7 @@ func EnableFPSCounter(DeltaTime float64) {
 
 		// Print the FPS
 		str := strconv.FormatFloat(FPS, 'f', 3, 64)
-		fmt.Println("FPS: ", str)
+		fmt.Printf("\rFPS %s", str)
 
 		// Reset the frame count and start time
 		frameCount = 0

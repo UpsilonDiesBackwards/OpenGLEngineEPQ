@@ -1,4 +1,4 @@
-package objLoader
+package entities
 
 import (
 	"fmt"
@@ -59,7 +59,7 @@ func loadOBJFromFile(filePath string) (vertices, normals, textureCoords []float3
 	// Read file
 	fileBytes, err := os.ReadFile(filePath)
 	if err != nil {
-		fmt.Printf("Failed to load OBJ file!")
+		fmt.Printf("Failed to load OBJ file: %s", err)
 		return
 	}
 
