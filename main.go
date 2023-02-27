@@ -156,12 +156,23 @@ func drawWindowContent(objectProgram, lightProgram uint32) {
 			log.Printf("error binding vertex array object for object: %v,  reason: %v\n", obj.VAO, err)
 		}
 
+		var normalBuffer uint32
+		gl.GenBuffers(1, &normalBuffer)
+
+		// bind the new buffer object to the ARRAY_BUFFER target and upload the normal data
+		gl.BindBuffer(gl.ARRAY_BUFFER, normalBuffer)
+		// Change TextureCoords to Normals. For some reason Normals are a bit weird
+		gl.BufferData(gl.ARRAY_BUFFER, len(obj.TextureCoords)*4, gl.Ptr(obj.TextureCoords), gl.STATIC_DRAW)
+
+		// enable the normal attribute and specify its layout
+		normalAttribute := gl.GetAttribLocation(objectProgram, gl.Str("normal\x00"))
+		gl.EnableVertexAttribArray(uint32(normalAttribute))
+		gl.VertexAttribPointer(uint32(normalAttribute), 3, gl.FLOAT, false, 0, nil)
+
 		objectColorLoc := gl.GetUniformLocation(objectProgram, gl.Str("objectColor\x00"))
 		lightColorLoc := gl.GetUniformLocation(objectProgram, gl.Str("lightColor\x00"))
-		lightPosLoc := gl.GetUniformLocation(objectProgram, gl.Str("lightPos\x00"))
-		gl.Uniform3f(lightPosLoc, 1.2, 1.0, 2.0)     // Example light position
-		gl.Uniform3f(objectColorLoc, 1.0, 0.5, 0.31) // Example object color
-		gl.Uniform3f(lightColorLoc, 1.0, 1.0, 1.0)   // Example light color
+		gl.Uniform3f(objectColorLoc, 4, 4, 0)      // Example object color
+		gl.Uniform3f(lightColorLoc, 1.0, 1.0, 0.0) // Example light color
 
 		// Set perspective block
 		obj.CreateModelMatrix()
@@ -206,6 +217,9 @@ func drawWindowContent(objectProgram, lightProgram uint32) {
 		if err := gl.GetError(); err != 0 {
 			log.Printf("error binding light uniform buffer base: %v for buffer %b\n", err, UBO)
 		}
+
+		lightPosLoc := gl.GetUniformLocation(lightProgram, gl.Str("lightPos\x00"))
+		gl.Uniform3f(lightPosLoc, l.Position.X(), l.Position.Y(), l.Position.Z()) // Example light position
 
 		gl.BufferSubData(gl.UNIFORM_BUFFER, 0, int(unsafe.Sizeof(block)), unsafe.Pointer(&block))
 		gl.DrawElements(gl.TRIANGLES, int32(len(l.Indices)), gl.UNSIGNED_INT, gl.PtrOffset(0))
